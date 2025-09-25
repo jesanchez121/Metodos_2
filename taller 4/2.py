@@ -61,5 +61,4 @@ txt = (r"$\partial_t u=\alpha\nabla^2 u+u-u^3-v-0.05,$ "
 ax.text(0.01,0.99,txt,transform=ax.transAxes,va="top",ha="left",fontsize=8,
         color="w",bbox=dict(facecolor="k",alpha=0.45,pad=4,edgecolor="none"))
 fig.tight_layout()
-fig.savefig("2_turing_u_minus_u3_minus_v_minus005.png", bbox_inches="tight")
-plt.show()
+fig.savefig("2_turing_u_minus_u3_minus_v_minus005.pdf", bbox_inches="tight")
