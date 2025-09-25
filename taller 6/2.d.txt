@@ -1,0 +1,15 @@
+Resultados de probabilidad de concentración crítica (Pu >= 80)
+============================================================
+
+Método SDE (Ecuaciones Diferenciales Estocásticas):
+Frecuentista: p = 12.00% ± 1.03%
+Bayesiana:    p = 12.08% ± 1.03%
+
+Método Gillespie (Simulación Exacta):
+Frecuentista: p = 17.90% ± 1.21%
+Bayesiana:    p = 17.96% ± 1.21%
+
+Discusión:
+Ambos métodos muestran una probabilidad baja de alcanzar la concentración crítica.
+La simulación exacta (Gillespie) tiende a ser más conservadora debido a su naturaleza discreta.
+Las incertidumbres son pequeñas gracias al alto número de trayectorias (N=1000).
