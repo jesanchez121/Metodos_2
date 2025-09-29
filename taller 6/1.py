@@ -145,111 +145,77 @@ if __name__ == '__main__':
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import deque
-from matplotlib.backends.backend_pdf import PdfPages
+from scipy.ndimage import uniform_filter1d
 
-def get_domains(lattice):
-
+def find_magnetic_domains(lattice):
     N = lattice.shape[0]
     visited = np.zeros_like(lattice, dtype=bool)
     domain_sizes = []
-
     for i in range(N):
         for j in range(N):
             if not visited[i, j]:
-
                 domain_size = 0
                 current_spin = lattice[i, j]
                 q = deque([(i, j)])
                 visited[i, j] = True
-
                 while q:
                     r, c = q.popleft()
                     domain_size += 1
-
-
-                    for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                         nr, nc = (r + dr) % N, (c + dc) % N
-
                         if not visited[nr, nc] and lattice[nr, nc] == current_spin:
                             visited[nr, nc] = True
                             q.append((nr, nc))
-
                 domain_sizes.append(domain_size)
-
     return np.array(domain_sizes)
 
-def metropolis_step(lattice, beta, J):
-
+def wolff_step(lattice, beta, J=1.0):
     N = lattice.shape[0]
     i, j = np.random.randint(0, N, size=2)
-    spin = lattice[i, j]
+    cluster_spin = lattice[i, j]
+    cluster = set([(i, j)])
+    frontier = [(i, j)]
+    p_add = 1 - np.exp(-2 * beta * J)
+    while frontier:
+        r, c = frontier.pop()
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            nr, nc = (r + dr) % N, (c + dc) % N
+            if (nr, nc) not in cluster and lattice[nr, nc] == cluster_spin:
+                if np.random.rand() < p_add:
+                    cluster.add((nr, nc))
+                    frontier.append((nr, nc))
+    for (r, c) in cluster:
+        lattice[r, c] *= -1
 
-    neighbors_sum = (lattice[(i+1)%N, j] + lattice[(i-1)%N, j] +
-                     lattice[i, (j+1)%N] + lattice[i, (j-1)%N])
-
-    delta_E = 2 * J * spin * neighbors_sum
-
-    if delta_E < 0 or np.random.rand() < np.exp(-delta_E * beta):
-        lattice[i, j] = -spin
-
-def ising_simulation_with_domains(N=50, J=1, beta=0.5, epochs=250000, sample_interval=1000):
+def run_and_plot_bonus_B():
+    N = 50
+    J = 1.0
+    beta = 0.5
+    epochs = 20000  # Wolff converge más rápido
+    measure_interval = 10
 
     lattice = np.random.choice([-1, 1], size=(N, N))
+    avg_domain_sizes, largest_domain_fracs, steps = [], [], []
 
-    avg_domain_sizes = []
-    lattice_snapshots = {}
-
-    lattice_snapshots[0] = lattice.copy()
-
-    for epoch in range(epochs):
-        metropolis_step(lattice, beta, J)
-
-        if epoch % sample_interval == 0:
-            domains = get_domains(lattice)
+    for step in range(epochs):
+        wolff_step(lattice, beta, J)
+        if step % measure_interval == 0:
+            domains = find_magnetic_domains(lattice)
             avg_domain_sizes.append(np.mean(domains))
+            largest_domain_fracs.append(domains.max() / (N*N))
+            steps.append(step)
 
-        if epoch == epochs // 2:
-            lattice_snapshots[epochs // 2] = lattice.copy()
+    smoothed_largest = uniform_filter1d(largest_domain_fracs, size=10)
 
-    lattice_snapshots[epochs] = lattice.copy()
+    plt.figure(figsize=(10, 6))
+    plt.plot(steps, smoothed_largest, color='darkorange', lw=2)
+    plt.xlabel('Iteraciones (clusters actualizados)')
+    plt.ylabel('Fracción del mayor dominio')
+    plt.title('Bono')
+    plt.ylim(0, 1)
+    plt.grid(True, linestyle=':')
+    plt.savefig("1.bono.pdf")
+    plt.close()
 
-    return avg_domain_sizes, lattice_snapshots
-
-if __name__ == '__main__':
-    # Parámetros de la simulación
-    N = 50
-    J = 1
-    beta_critico_aprox = np.log(1 + np.sqrt(2)) / (2 * J)
-    beta = beta_critico_aprox * 0.95
-    epochs = 250000
-    sample_interval = 1000
-
-    avg_sizes, snapshots = ising_simulation_with_domains(N, J, beta, epochs, sample_interval)
-
-    with PdfPages('1.a_bono.pdf') as pdf:
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-        times = sorted(snapshots.keys())
-        for ax, time in zip(axes, times):
-            ax.imshow(snapshots[time], cmap='binary', interpolation='nearest')
-            ax.set_title(f'Red en la Época {time}')
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-        fig.suptitle('Evolución de los Dominios Magnéticos', fontsize=16)
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        # --- Página 2: Gráfica del Tamaño Promedio del Dominio ---
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        time_axis = np.arange(len(avg_sizes)) * sample_interval
-        ax.plot(time_axis, avg_sizes, label='Tamaño Promedio de Dominio', color='purple')
-        ax.set_xlabel('Épocas')
-        ax.set_ylabel('Tamaño Promedio')
-        ax.set_title('Crecimiento del Tamaño Promedio de los Dominios Magnéticos')
-        ax.legend()
-        ax.grid(True)
-
-        pdf.savefig(fig)
-        plt.close(fig)
+if _name_ == "_main_":
+    run_and_plot_bonus_B()
